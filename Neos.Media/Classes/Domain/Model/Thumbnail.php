@@ -15,6 +15,7 @@ use Neos\Flow\Annotations as Flow;
 use Doctrine\ORM\Mapping as ORM;
 use Neos\Flow\ObjectManagement\ObjectManagerInterface;
 use Neos\Flow\ResourceManagement\PersistentResource;
+use Neos\Media\Domain\Service\ThumbnailService;
 use Neos\Utility\Arrays;
 use Neos\Media\Domain\Strategy\ThumbnailGeneratorStrategy;
 
@@ -38,6 +39,12 @@ class Thumbnail implements ImageInterface
      * @Flow\Inject
      */
     protected $generatorStrategy;
+
+    /**
+     * @var ThumbnailService
+     * @Flow\Inject
+     */
+    protected $thumbnailService;
 
     /**
      * @var Asset
@@ -103,8 +110,17 @@ class Thumbnail implements ImageInterface
             if ($this->async === false) {
                 $this->refresh();
             }
-            $this->emitThumbnailCreated($this);
         }
+    }
+
+    /**
+     * Post persistence lifecycle callback
+     *
+     * @ORM\PostPersist
+     */
+    public function onPostPersist()
+    {
+        $this->thumbnailService->emitThumbnailPersisted($this);
     }
 
     /**
@@ -207,18 +223,5 @@ class Thumbnail implements ImageInterface
     public function refresh()
     {
         $this->generatorStrategy->refresh($this);
-    }
-
-    /**
-     * Signals that a thumbnail was created.
-     * @deprecated Will be removed with next major version of Neos.Media.
-     * Use ThumbnailService::emitThumbnailCreated signal instead.
-     *
-     * @Flow\Signal
-     * @param Thumbnail $thumbnail
-     * @return void
-     */
-    protected function emitThumbnailCreated(Thumbnail $thumbnail)
-    {
     }
 }
