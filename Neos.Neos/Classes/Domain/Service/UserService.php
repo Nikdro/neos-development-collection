@@ -236,17 +236,32 @@ class UserService
      */
     public function getCurrentUser()
     {
-        if ($this->securityContext->canBeInitialized() === true) {
+        if ($this->securityContext->canBeInitialized() === false) {
             $account = $this->securityContext->getAccount();
-            if ($account !== null) {
-                return $this->getUser(
-                    $account->getAccountIdentifier(),
-                    $account->getAuthenticationProviderName()
-                );
-            }
+            return null;
         }
 
-        return null;
+        $tokens = $this->securityContext->getAuthenticationTokens();
+        $user = array_reduce($tokens, function ($foundUser, TokenInterface $token) {
+            if ($foundUser !== null) {
+                return $foundUser;
+            }
+
+            $account = $token->getAccount();
+            if ($account === null) {
+                return $foundUser;
+            }
+
+            $user = $this->getUser($account->getAccountIdentifier(), $account->getAuthenticationProviderName());
+            if ($user === null) {
+                return $foundUser;
+            }
+
+
+            return $user;
+        }, null);
+
+        return $user;
     }
 
     /**
@@ -861,7 +876,7 @@ class UserService
         }
 
         $user = $this->partyService->getAssignedPartyOfAccount($account);
-        if (!$user instanceof User) {
+        if ($user !== null && !$user instanceof User) {
             throw new Exception(sprintf('Unexpected user type "%s". An account with the identifier "%s" exists, but the corresponding party is not a Neos User.', get_class($user), $username), 1422270948);
         }
 
